@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import axios, { AxiosRequestConfig } from "axios";
+import run from "./run";
 
 const maxContentLength = 1000000;
 
@@ -34,42 +34,13 @@ function getMetaData(originEditor: vscode.TextEditor) {
   };
 }
 
-async function runCommand(
-  code: string = "",
-  originEditor: vscode.TextEditor
-): Promise<string> {
-  const { sourceFile, ranAt } = getMetaData(originEditor);
-  try {
-    const requestConfig: AxiosRequestConfig = {
-      method: "post",
-      url: "/run",
-      data: { code }
-    };
-    const {
-      data: { environments, result, logs }
-    } = await axios.request(requestConfig);
-    const data = { sourceFile, ranAt, environments, result, logs };
-    return JSON.stringify(data, null, "  ");
-  } catch (error) {
-    const {
-      data: { errorMessage = "Failed to execute code", stack = [] } = {}
-    } = error.response || {};
-    return [
-      `sourceFile: ${sourceFile}`,
-      `ranAt: ${ranAt}\n`,
-      errorMessage,
-      ...stack
-    ].join("\n");
-  }
-}
-
 function truncateContent(content: string): string {
   if (content.length > maxContentLength) {
     const truncated = content.slice(0, maxContentLength);
     logger.log(
       `Result is ${content.length} characters, truncated to ${maxContentLength}`
     );
-    return `// truncated to first ${maxContentLength} characters\n${truncated}`;
+    return `// truncated to ${maxContentLength} characters\n${truncated}`;
   }
   return content;
 }
@@ -84,8 +55,10 @@ async function runFile(originEditor: vscode.TextEditor): Promise<void> {
       return;
     }
     logger.log(`Run file ${originEditor.document.uri.path}`);
-    const content = truncateContent(await runCommand(code, originEditor));
-    await createNewEditor(content);
+    const { sourceFile, ranAt } = getMetaData(originEditor);
+    const { environments, result } = await run(code);
+    const data = { sourceFile, ranAt, environments, result };
+    await createNewEditor(truncateContent(JSON.stringify(data, null, "  ")));
   } catch (error) {
     logger.log("Failed to run file", error.stack);
     vscode.window.showInformationMessage(
@@ -94,26 +67,11 @@ async function runFile(originEditor: vscode.TextEditor): Promise<void> {
   }
 }
 
-function setAxiosBase(): void {
-  axios.defaults.baseURL = vscode.workspace
-    .getConfiguration()
-    .get("moncow.apiUrl");
-  logger.log(`Set base URL ${axios.defaults.baseURL}`);
-}
-
-export function activate({ subscriptions }: vscode.ExtensionContext): void {
-  setAxiosBase();
+export async function activate({
+  subscriptions
+}: vscode.ExtensionContext): Promise<void> {
   subscriptions.push(
     vscode.commands.registerTextEditorCommand("moncow.runFile", runFile)
-  );
-  subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration(
-      (event: vscode.ConfigurationChangeEvent) => {
-        if (event.affectsConfiguration("moncow.apiUrl")) {
-          setAxiosBase();
-        }
-      }
-    )
   );
 }
 
