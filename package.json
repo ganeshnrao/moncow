@@ -1,7 +1,7 @@
 {
   "name": "moncow",
   "displayName": "MonCow",
-  "description": "MongoDB query runner",
+  "description": "Run MongoDB queries directly from VSCode",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.40.0"
@@ -17,7 +17,7 @@
     "keybindings": [
       {
         "command": "moncow.runFile",
-        "key": "Cmd+Shift+E"
+        "key": "Cmd+Shift+1"
       }
     ],
     "commands": [
@@ -25,7 +25,21 @@
         "command": "moncow.runFile",
         "title": "MonCow: Run file"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "MonCow",
+      "properties": {
+        "moncow.apiUrl": {
+          "type": "string",
+          "default": "http://localhost:2020/api",
+          "description": "MonCow API server URL",
+          "scope": "window",
+          "examples": [
+            "http://localhost:2020/api"
+          ]
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
