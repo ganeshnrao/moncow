@@ -1,78 +1,89 @@
 import * as vscode from "vscode";
-import run from "./run";
+import * as moncow from "./moncow";
+import boilerplate from "./boilerplate";
 
-const maxContentLength = 1000000;
-
-const logger = {
-  log(...args: any): void {
-    console.log("{ MonCow }", ...args);
-  }
-};
+const maxContentLength: number = 1000000;
+const mustStartWith: string = "// moncow";
 
 async function createNewEditor(
   content: string = "",
-  language: string = "jsonc"
+  language: string = "jsonc",
+  position: number = vscode.ViewColumn.Beside
 ): Promise<vscode.TextEditor> {
-  const document = await vscode.workspace.openTextDocument({
+  const document: vscode.TextDocument = await vscode.workspace.openTextDocument({
     content,
     language
   });
-  logger.log("Document created");
-  const editor = await vscode.window.showTextDocument(
-    document,
-    vscode.ViewColumn.Beside,
-    true
-  );
-  logger.log("Editor created");
+  const editor: vscode.TextEditor = await vscode.window.showTextDocument(document, position, true);
   return editor;
 }
 
-function getMetaData(originEditor: vscode.TextEditor) {
+function getMetaData(originEditor: vscode.TextEditor): { sourceFile: string; ranAt: string } {
   return {
     sourceFile: originEditor.document.uri.path,
     ranAt: new Date().toISOString()
   };
 }
 
-function truncateContent(content: string): string {
+function truncate(content: string): string {
   if (content.length > maxContentLength) {
-    const truncated = content.slice(0, maxContentLength);
-    logger.log(
-      `Result is ${content.length} characters, truncated to ${maxContentLength}`
-    );
-    return `// truncated to ${maxContentLength} characters\n${truncated}`;
+    const truncated: string = content.slice(0, maxContentLength);
+    return [
+      `// File was truncated to ${maxContentLength} from ${content.length} characters.`,
+      "// Please consider tightening your query.",
+      truncated
+    ].join("\n");
   }
   return content;
 }
 
 async function runFile(originEditor: vscode.TextEditor): Promise<void> {
   try {
-    const code = originEditor.document.getText().trim();
-    if (!code.startsWith("// moncow")) {
+    const code: string = originEditor.document.getText().trim();
+    if (!code.startsWith(mustStartWith)) {
       vscode.window.showInformationMessage(
-        "File will not be executed unless it starts with `// moncow`"
+        `File will not be executed unless it starts with ${mustStartWith}`
       );
       return;
     }
-    logger.log(`Run file ${originEditor.document.uri.path}`);
     const { sourceFile, ranAt } = getMetaData(originEditor);
-    const { environments, result } = await run(code);
+    const { environments, result } = await moncow.run(code);
     const data = { sourceFile, ranAt, environments, result };
-    await createNewEditor(truncateContent(JSON.stringify(data, null, "  ")));
+    await createNewEditor(truncate(JSON.stringify(data, null, "  ")));
   } catch (error) {
-    logger.log("Failed to run file", error.stack);
-    vscode.window.showInformationMessage(
-      `Failed to run file. ${error.message}`
-    );
+    vscode.window.showInformationMessage(`Failed to run file. ${error.message}`);
   }
 }
 
-export async function activate({
-  subscriptions
-}: vscode.ExtensionContext): Promise<void> {
-  subscriptions.push(
-    vscode.commands.registerTextEditorCommand("moncow.runFile", runFile)
+async function updateSettings(event: vscode.ConfigurationChangeEvent): Promise<void> {
+  if (event.affectsConfiguration("moncow")) {
+    await moncow.initialize();
+  }
+}
+
+async function showList(): Promise<void> {
+  const connected = await moncow.showConnected();
+  await createNewEditor(JSON.stringify({ connected }, null, "  "));
+}
+
+async function createFile(): Promise<void> {
+  await createNewEditor(boilerplate, "javascript", vscode.ViewColumn.Active);
+}
+
+async function end(): Promise<void> {
+  const result: string[] = await moncow.disconnectAll();
+  vscode.window.showInformationMessage(
+    `Ended ${result.length} connection(s).\n${result.join("\n")}`
   );
+}
+
+export async function activate({ subscriptions }: vscode.ExtensionContext): Promise<void> {
+  await moncow.initialize();
+  subscriptions.push(vscode.commands.registerTextEditorCommand("moncow.createFile", createFile));
+  subscriptions.push(vscode.commands.registerTextEditorCommand("moncow.runFile", runFile));
+  subscriptions.push(vscode.commands.registerTextEditorCommand("moncow.list", showList));
+  subscriptions.push(vscode.commands.registerTextEditorCommand("moncow.end", end));
+  subscriptions.push(vscode.workspace.onDidChangeConfiguration(updateSettings));
 }
 
 export function deactivate(): void {}

@@ -1,6 +1,6 @@
 {
   "name": "moncow",
-  "displayName": "MonCow",
+  "displayName": "Moncow",
   "description": "Run MongoDB queries directly from VSCode",
   "version": "0.0.1",
   "engines": {
@@ -11,7 +11,13 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:moncow.runFile"
+    "onCommand:moncow.createFile",
+    "onCommand:moncow.runFile",
+    "onCommand:moncow.list",
+    "onCommand:moncow.end"
+  ],
+  "files": [
+    "./src/boilerplate.js"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -19,12 +25,89 @@
       {
         "command": "moncow.runFile",
         "key": "Cmd+Shift+1"
+      },
+      {
+        "command": "moncow.createFile",
+        "key": "Cmd+Shift+2"
       }
     ],
     "commands": [
       {
+        "command": "moncow.createFile",
+        "title": "Moncow: Create boilerplate file"
+      },
+      {
         "command": "moncow.runFile",
-        "title": "MonCow: Run file"
+        "title": "Moncow: Run file"
+      },
+      {
+        "command": "moncow.list",
+        "title": "Moncow: List connected"
+      },
+      {
+        "command": "moncow.end",
+        "title": "Moncow: Disconnect all"
+      }
+    ],
+    "configuration": [
+      {
+        "title": "Moncow",
+        "properties": {
+          "moncow.startPortFrom": {
+            "title": "Start ports from",
+            "type": "number",
+            "default": 27020,
+            "description": "Each connection that uses a tunnel will be automatically assigned a port sequentially starting from this number",
+            "scope": "window"
+          },
+          "moncow.connections": {
+            "title": "Connections",
+            "type": "array",
+            "description": "List of connection settings",
+            "scope": "window",
+            "default": [
+              {
+                "environment": "local",
+                "connectionConfigs": [
+                  {
+                    "url": "mongodb://localhost:27017",
+                    "dbNames": [
+                      "test"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "environment": {
+                  "type": "string"
+                },
+                "connectionConfigs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string"
+                      },
+                      "tunnel": {
+                        "type": "boolean"
+                      },
+                      "dbNames": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     ]
   },
@@ -43,20 +126,18 @@
     "@types/mongodb": "^3.3.10",
     "@types/node": "^12.11.7",
     "@types/vscode": "^1.40.0",
+    "bluebird": "^3.7.1",
     "glob": "^7.1.5",
+    "lodash": "^4.17.15",
     "mocha": "^6.2.2",
+    "moment": "^2.24.0",
+    "mongodb": "^3.3.4",
     "tslint": "^5.20.0",
     "typescript": "^3.6.4",
     "vscode-test": "^1.2.2"
   },
-  "dependencies": {
-    "axios": "^0.19.0",
-    "bluebird": "^3.7.1",
-    "koa": "^2.11.0",
-    "koa-bodyparser": "^4.2.1",
-    "koa-router": "^7.4.0",
-    "lodash": "^4.17.15",
-    "log-row": "^2.0.3",
-    "mongodb": "^3.3.3"
+  "dependencies": {},
+  "prettier": {
+    "printWidth": 100
   }
 }
