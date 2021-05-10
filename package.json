@@ -128,7 +128,7 @@
     "@types/vscode": "^1.40.0",
     "bluebird": "^3.7.1",
     "glob": "^7.1.5",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.21",
     "mocha": "^6.2.2",
     "moment": "^2.24.0",
     "mongodb": "^3.3.4",
